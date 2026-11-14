@@ -1,0 +1,44 @@
+name: deploy preview site
+
+# The epher `preview` workflow force-pushes this tree to
+# gh-pages (ADR-0062); this workflow serves the tree with
+# Actions-based Pages. Written by the epher preview workflow:
+# edit it there, not here.
+on:
+  push:
+    branches: [gh-pages]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: preview-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      # Static URL: GitHub substitutes brace-dollar expressions
+      # in run blocks before the shell sees them, so this file
+      # must not contain any.
+      url: https://upyesp.github.io/epher-preview/
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stage the tree for serving
+        # Drop .github (this workflow itself) from what the
+        # site serves.
+        run: |
+          mkdir -p _site
+          find . -mindepth 1 -maxdepth 1 ! -name .github ! -name _site \
+            -exec cp -a {} _site/ \;
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
